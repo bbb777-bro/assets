@@ -1,0 +1,43 @@
+name: Bark Push
+on:
+  push:
+    paths:
+      - bark-message.json
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Notification title
+        required: false
+        default: 小小白提醒
+      body:
+        description: Notification body
+        required: false
+        default: 测试
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send Bark push
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: |
+          python3 - << 'PY'
+          import json, urllib.request, urllib.parse, os
+          try:
+              with open('bark-message.json', encoding='utf-8') as f:
+                  msg = json.load(f)
+          except Exception:
+              msg = {}
+          title = msg.get('title') or '小小白提醒'
+          body = msg.get('body') or '测试'
+          icon = msg.get('icon') or 'https://raw.githubusercontent.com/bbb777-bro/assets/main/avatar-icon.png'
+          group = msg.get('group') or '小小白提醒'
+          level = msg.get('level') or 'timeSensitive'
+          key = os.environ.get('BARK_KEY', '')
+          if not key:
+              raise SystemExit('BARK_KEY secret is not set')
+          url = 'https://api.day.app/{}/{}/{}?{}'.format(key, urllib.parse.quote(title, safe=''), urllib.parse.quote(body, safe=''), urllib.parse.urlencode({'level': level, 'group': group, 'icon': icon}))
+          with urllib.request.urlopen(url, timeout=30) as resp:
+              print(resp.read().decode())
+          PY
